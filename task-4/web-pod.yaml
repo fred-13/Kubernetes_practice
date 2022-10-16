@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+
+      initContainers:
+      - name: migration-web
+        image: busybox:1.31.0
+        command: ['sh', '-c', 'wget -O- https://tinyurl.com/otus-k8s-intro | sh']
+        volumeMounts:
+        - name: app
+          mountPath: /app
+
+      containers:
+      - name: web
+        image: fred13/wep-app:latest
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+        readinessProbe:
+          initialDelaySeconds: 10
+          httpGet:
+            path: "/"
+            port: 80
+        volumeMounts:
+        - name: app
+          mountPath: /app
+
+      volumes:
+      - name: app
+        emptyDir: {}
