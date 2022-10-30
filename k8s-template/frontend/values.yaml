@@ -1,0 +1,36 @@
+#------------Pod---------------
+
+replicaCount: 3
+
+image:
+  repository_1: "busybox"
+  tag_1: "1.31.0"
+  repository_2: "fred13/wep-app"
+  tag_2: "latest"
+
+pod:
+  port: 80
+
+resources:
+  requests:
+    memory: "64Mi"
+    cpu: "250m"
+  limits:
+    memory: "128Mi"
+    cpu: "500m"
+
+#------------Service--------------
+
+service:
+  type: "ClusterIP"
+  port: 8000
+  targetPort: 80
+
+#------------Ingress--------------
+
+ingress:
+  host: web-app.com
+  pathType: Prefix
+  service:
+    name: clip
+    port: 8000
