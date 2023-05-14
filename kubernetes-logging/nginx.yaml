@@ -1,0 +1,124 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: app
+        image: nginx
+        resources:
+            limits:
+              memory: 200Mi
+              cpu: 100m
+            requests:
+              memory: 100Mi
+              cpu: 50m
+        ports:
+          - name: nginx
+            containerPort: 80
+        volumeMounts:
+          - name: config
+            subPath: default.conf
+            mountPath: /etc/nginx/conf.d/default.conf
+          - name: config
+            subPath: nginx.conf
+            mountPath: /etc/nginx/nginx.conf
+      volumes:
+        - name: config
+          configMap:
+            name: config-nginx
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-nginx
+  labels:
+    app: nginx
+data:
+  default.conf: |
+    server {
+
+      listen       80;
+      listen  [::]:80;
+      server_name  localhost;
+
+      error_log  /dev/stderr warn;
+      access_log  /dev/stdout main;
+
+      location / {
+        root  /usr/share/nginx/html;
+        index index.html index.htm;
+      }
+
+      error_page   500 502 503 504  /50x.html;
+
+      location = /50x.html {
+        root  /usr/share/nginx/html;
+      }
+
+      location = /basic_status {
+        stub_status;
+      }
+
+    }
+
+  nginx.conf: |
+    user  nginx;
+    worker_processes  auto;
+
+    error_log  /var/log/nginx/error.log notice;
+    pid        /var/run/nginx.pid;
+
+
+    events {
+        worker_connections  1024;
+    }
+
+
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+
+        error_log  /dev/stderr warn;
+        access_log  /dev/stdout main;
+
+        sendfile        on;
+        #tcp_nopush     on;
+
+        keepalive_timeout  65;
+
+        #gzip  on;
+
+        include /etc/nginx/conf.d/*.conf;
+    }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
